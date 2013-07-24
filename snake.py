@@ -45,12 +45,23 @@ nameRect = name.get_rect()
 nameRect.top = gameArea.bottom + 2
 nameRect.right = gameArea.right
 
+instr = smallFont.render('Press keys 1-5 to change level', True, WHITE)
+instrRect = instr.get_rect()
+instrRect.centerx = gameArea.centerx
+instrRect.bottom = gameArea.top - 2
+
 score = smallFont.render('Score: 0', True,  WHITE)
 scoreRect = score.get_rect()
 scoreRect.top = gameArea.bottom + 2
-scoreRect.left = gameArea.left
+scoreRect.centerx = gameArea.centerx
+
+level = smallFont.render('Level: 1', True, WHITE)
+levelRect = level.get_rect()
+levelRect.top = gameArea.bottom + 2
+levelRect.left = gameArea.left
 
 def cloneList(someList):
+	# creates an object clone for each object in the list
 	clone = []
 	for item in someList:
 		clone.append(copy.copy(item))
@@ -91,6 +102,7 @@ def reset():
 	food.append(createRandomFood(snakeBody))
 
 reset()
+gameSpeed = 2 # initial speed
 
 # game loop
 while True:
@@ -108,6 +120,16 @@ while True:
 				snakeDir = RIGHT
 			elif event.key == K_LEFT:
 				snakeDir = LEFT
+			if event.key == K_1:
+				gameSpeed = 2
+			elif event.key == K_2:
+				gameSpeed = 4
+			elif event.key == K_3:
+				gameSpeed = 6
+			elif event.key == K_4:
+				gameSpeed = 8
+			elif event.key == K_5:
+				gameSpeed = 10
 		if event.type == KEYUP:
 			if event.key == K_SPACE:
 				reset()
@@ -148,12 +170,10 @@ while True:
 			# collision with snake body
 			if snakeHead.colliderect(snakeBody[i + 1]):
 				gameOverStatus = True
-				print('Game over') # debug code
 				break
 		if not gameArea.collidepoint(snakeHead.center):
 			# collision with border
 			gameOverStatus = True
-			print('Game over') # debug code
 		if snakeHead.colliderect(food[0]):
 			# collision with food
 			consumedFoodQ.append((food[0].centerx, food[0].centery))
@@ -172,14 +192,17 @@ while True:
 				snakeBody.append(pygame.Rect(snakeClone[-1].x, snakeClone[-1].y, SNAKESIZE, SNAKESIZE))
 				nextFood = ()
 
-		# update score
+		# update text
 		score = smallFont.render('Score: %s ' % scoreCounter, True,  WHITE)
+		level = smallFont.render('Level: %d ' % (gameSpeed / 2), True, WHITE)
 
 	if not gameOverStatus:
 		# draw background
 		windowSurface.fill(BLACK)
 		windowSurface.blit(name, nameRect)
+		windowSurface.blit(instr, instrRect)
 		windowSurface.blit(score, scoreRect)
+		windowSurface.blit(level, levelRect)
 		pygame.draw.rect(windowSurface, WHITE, gameArea, 1)
 
 		# draw food
@@ -192,7 +215,9 @@ while True:
 	
 		# draw window
 		pygame.display.update()
-		gameClock.tick(2)
+
+		# game speed
+		gameClock.tick(gameSpeed)
 
 	if gameOverStatus:
 		# display game over text
@@ -207,5 +232,4 @@ while True:
 		windowSurface.blit(gameOver, gameOverRect)
 		windowSurface.blit(startNewGame, startNewGameRect)
 		pygame.display.update()
-		gameClock.tick(1)
-
+		gameClock.tick(2)
