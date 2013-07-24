@@ -1,1 +1,10 @@
-DISCLAIMER: I am not applying OOP concepts on purpose. 
+DISCLAIMER: I am not applying OOP concepts on purpose.
+
+snake is originally written with Python 3.2 and pygame 1.9.2a0 for Python 3.2. Due to certain compatibility issues, I suggest to use Python 2.7 and pygame 1.9.2a0 for Python 2.7.
+
+Python: http://www.python.org/download/
+pygame: http://www.pygame.org/download.shtml
+
+A Windows executable version of this program can be downloaded from the following:
+
+Download exe: https://www.dropbox.com/s/40l9o5nv4cj0nkw/snake.zip
