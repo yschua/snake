@@ -1,5 +1,6 @@
 import pygame, random, sys, copy
 from pygame.locals import *
+from collections import deque
 
 # initialize pygame
 pygame.init()
@@ -9,15 +10,15 @@ gameClock = pygame.time.Clock()
 WINDOWWIDTH = 300
 WINDOWHEIGHT = 300
 windowSurface = pygame.display.set_mode((WINDOWWIDTH, WINDOWHEIGHT), 0, 32)
-pygame.display.set_caption('Snake')
+pygame.display.set_caption('snake')
 
 # set game area
 gameArea = pygame.Rect(17, 17, 266, 266) # game area is set up as a 12x12 grid
 
 # set up colours
 BLACK = (0, 0, 0)
+GRAY = (200, 200, 200)
 WHITE = (255, 255, 255)
-GREEN = (0, 255, 0)
 
 # set up directions
 UP = 1
@@ -32,6 +33,22 @@ STARTINGY = gameArea.top + 134
 INITLENGTH = 3
 INITDIR = LEFT
 SNAKEMS = SNAKESIZE + 2
+
+# set font
+smallFont = pygame.font.SysFont(None, 12)
+medFont = pygame.font.SysFont(None, 18)
+largeFont = pygame.font.SysFont(None, 24)
+
+# set initial text
+name = smallFont.render('By YS Chua', True, WHITE)
+nameRect = name.get_rect()
+nameRect.top = gameArea.bottom + 2
+nameRect.right = gameArea.right
+
+score = smallFont.render('Score: 0', True,  WHITE)
+scoreRect = score.get_rect()
+scoreRect.top = gameArea.bottom + 2
+scoreRect.left = gameArea.left
 
 def cloneList(someList):
 	clone = []
@@ -59,10 +76,13 @@ def createRandomFood(snakeBody):
 
 def reset():
 	# initialize snake
-	global gameOver, snakeBody, snakeDir, snakeHead, food
-	gameOver = False
-	snakeBody = []
-	food = []
+	global gameOverStatus, snakeBody, snakeDir, snakeHead, food, consumedFoodQ, nextFood, scoreCounter
+	scoreCounter = 0
+	gameOverStatus = False
+	snakeBody = [] 
+	food = [] # list that always contains only one food rect
+	consumedFoodQ = deque([]) # queue containing coordinates of consumed foods that have yet to be added to snake's length
+	nextFood = () # coordinates of next food to be consumed in queue
 	snakeDir = INITDIR
 	snakeBody.append(pygame.Rect(STARTINGX, STARTINGY, SNAKESIZE, SNAKESIZE))
 	snakeHead = snakeBody[0]
@@ -89,23 +109,37 @@ while True:
 			elif event.key == K_LEFT:
 				snakeDir = LEFT
 		if event.type == KEYUP:
-			if event.key == K_ESCAPE:
+			if event.key == K_SPACE:
 				reset()
 
-	if not gameOver:
+	if not gameOverStatus:
 		# store current copy of snake
 		snakeClone = cloneList(snakeBody)
 
 		# movement
 		if snakeDir == UP:
-			snakeHead.top -= SNAKEMS
+			if snakeHead.left == snakeBody[1].left and snakeHead.top == (snakeBody[1].bottom + 2):
+				# prevent going to opposite direction, causing collision		
+				snakeHead.top += SNAKEMS # DOWN
+			else:
+				snakeHead.top -= SNAKEMS # UP
 		elif snakeDir == DOWN:
-			snakeHead.top += SNAKEMS
+			if snakeHead.left == snakeBody[1].left and snakeHead.bottom == (snakeBody[1].top - 2):
+				snakeHead.top -= SNAKEMS # UP
+			else:
+				snakeHead.top += SNAKEMS # DOWN
 		elif snakeDir == RIGHT:
-			snakeHead.right += SNAKEMS
+			if snakeHead.right == (snakeBody[1].left - 2) and snakeHead.top == snakeBody[1].top:
+				snakeHead.right -= SNAKEMS # LEFT
+			else:
+				snakeHead.right += SNAKEMS # RIGHT
 		elif snakeDir == LEFT:
-			snakeHead.right -= SNAKEMS
+			if snakeHead.left == (snakeBody[1].right + 2) and snakeHead.top == snakeBody[1].top:
+				snakeHead.right += SNAKEMS # RIGHT
+			else:
+				snakeHead.right -= SNAKEMS # LEFT
 		for i in range(len(snakeBody) - 1):
+			# this is the snake body following the head
 			snakeBody[i + 1].x = snakeClone[i].x
 			snakeBody[i + 1].y = snakeClone[i].y
 
@@ -113,24 +147,39 @@ while True:
 		for i in range(len(snakeBody) - 1):
 			# collision with snake body
 			if snakeHead.colliderect(snakeBody[i + 1]):
-				gameOver = True
+				gameOverStatus = True
 				print('Game over') # debug code
 				break
 		if not gameArea.collidepoint(snakeHead.center):
 			# collision with border
-			gameOver = True
+			gameOverStatus = True
 			print('Game over') # debug code
 		if snakeHead.colliderect(food[0]):
 			# collision with food
+			consumedFoodQ.append((food[0].centerx, food[0].centery))
 			food.remove(food[0])
+			scoreCounter += 1
 
 		# create new food if previous was consumed
 		if not food:
 			food.append(createRandomFood(snakeBody))
 
-	if not gameOver:
+		# check to add length to snake		
+		if len(consumedFoodQ) != 0 or nextFood != ():
+			if nextFood == ():
+				nextFood = consumedFoodQ.popleft()
+			if snakeClone[-1].centerx == nextFood[0] and snakeClone[-1].centery == nextFood[1]:
+				snakeBody.append(pygame.Rect(snakeClone[-1].x, snakeClone[-1].y, SNAKESIZE, SNAKESIZE))
+				nextFood = ()
+
+		# update score
+		score = smallFont.render('Score: %s ' % scoreCounter, True,  WHITE)
+
+	if not gameOverStatus:
 		# draw background
 		windowSurface.fill(BLACK)
+		windowSurface.blit(name, nameRect)
+		windowSurface.blit(score, scoreRect)
 		pygame.draw.rect(windowSurface, WHITE, gameArea, 1)
 
 		# draw food
@@ -139,9 +188,24 @@ while True:
 		# draw snake
 		for snakePart in snakeBody:
 			pygame.draw.rect(windowSurface, WHITE, snakePart)
-		pygame.draw.rect(windowSurface, GREEN, snakeHead)
+		pygame.draw.rect(windowSurface, GRAY, snakeHead)
 	
 		# draw window
 		pygame.display.update()
+		gameClock.tick(2)
 
-	gameClock.tick(2)
+	if gameOverStatus:
+		# display game over text
+		gameOver = largeFont.render(' Game Over! ', True, WHITE, BLACK)
+		startNewGame = medFont.render(' Press space to start a new game ', True, WHITE, BLACK)
+		gameOverRect = gameOver.get_rect()
+		startNewGameRect = startNewGame.get_rect()
+		gameOverRect.centerx = gameArea.centerx
+		gameOverRect.bottom = gameArea.centery
+		startNewGameRect.centerx = gameArea.centerx
+		startNewGameRect.top = gameArea.centery
+		windowSurface.blit(gameOver, gameOverRect)
+		windowSurface.blit(startNewGame, startNewGameRect)
+		pygame.display.update()
+		gameClock.tick(1)
+
